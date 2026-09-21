@@ -2,149 +2,47 @@ package com.alan.floresparatania;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.LinearGradient;
-import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.RectF;
-import android.graphics.Shader;
+import android.graphics.*;
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class MainActivity extends Activity {
-    @Override public void onCreate(Bundle state) {
-        super.onCreate(state);
-        setContentView(new LetterView());
-    }
+    @Override public void onCreate(Bundle state) { super.onCreate(state); setContentView(new FlowerView()); }
 
-    private final class LetterView extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Random random = new Random(14);
-        private final List<Flower> flowers = new ArrayList<>();
-        private float progress = 0f;
-        private boolean opened = false;
+    private final class FlowerView extends View {
+        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG); private final Random rnd=new Random();
+        private final List<Bloom> bouquet=new ArrayList<>(); private final List<Petal> petals=new ArrayList<>();
+        private final RectF bloomBtn=new RectF(), rainBtn=new RectF(), msgBtn=new RectF(), resetBtn=new RectF();
+        private final String[] messages={"Las flores amarillas significan alegría.","Que nunca te falten motivos para sonreír.","Un detalle amarillo para iluminar tu día.","La distancia no impide un detalle bonito.","Cada flor guarda un pensamiento para ti."};
+        private float opening=0,time=0; private boolean opened=false; private int msg=0,touches=0; private long last=System.nanoTime();
 
-        LetterView() {
-            super(MainActivity.this);
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
-            setContentDescription("Carta para Tania. Toca para abrir.");
-            for (int i = 0; i < 34; i++) flowers.add(new Flower());
-        }
+        FlowerView(){super(MainActivity.this);setLayerType(View.LAYER_TYPE_SOFTWARE,null);setContentDescription("Carta interactiva con flores amarillas para Tania");createBouquet();}
+        private void createBouquet(){float[][] a={{-.24f,.15f,1},{-.12f,.04f,1.08f},{0,.12f,1.12f},{.13f,.03f,1.05f},{.25f,.16f,.96f},{-.19f,-.05f,.93f},{-.06f,-.11f,1.02f},{.08f,-.12f,1},{.21f,-.04f,.92f},{-.11f,.23f,.88f},{.11f,.23f,.88f}};for(int i=0;i<a.length;i++)bouquet.add(new Bloom(a[i][0],a[i][1],a[i][2],i*.73f));}
 
-        @Override protected void onDraw(Canvas c) {
-            super.onDraw(c);
-            float w = getWidth(), h = getHeight();
-            paint.setShader(new LinearGradient(0, 0, 0, h, Color.rgb(10, 35, 29), Color.rgb(29, 58, 45), Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, paint); paint.setShader(null);
-
-            drawGlow(c, w * .5f, h * .43f, w * .45f);
-            if (progress > .05f) drawFlowers(c, w, h);
-            drawEnvelope(c, w, h);
-            if (progress > .55f) drawMessage(c, w, h);
-            else drawClosedText(c, w, h);
-        }
-
-        private void drawGlow(Canvas c, float x, float y, float radius) {
-            paint.setShader(new android.graphics.RadialGradient(x, y, radius, 0x35F5D66C, 0x00000000, Shader.TileMode.CLAMP));
-            c.drawCircle(x, y, radius, paint); paint.setShader(null);
-        }
-
-        private void drawClosedText(Canvas c, float w, float h) {
-            paint.setColor(0xFFFFF7DE); paint.setTextAlign(Paint.Align.CENTER);
-            paint.setTypeface(android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD));
-            paint.setTextSize(w * .09f); c.drawText("Para Tania", w / 2, h * .23f, paint);
-            paint.setTypeface(android.graphics.Typeface.create("sans", android.graphics.Typeface.NORMAL));
-            paint.setTextSize(w * .042f); paint.setColor(0xFFEADFBF);
-            c.drawText("Una pequeña sorpresa para ti", w / 2, h * .29f, paint);
-            paint.setColor(0xFFE8B945); c.drawRoundRect(w * .27f, h * .72f, w * .73f, h * .79f, 50, 50, paint);
-            paint.setColor(0xFF26331F); paint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); paint.setTextSize(w * .041f);
-            c.drawText("PRESIONA AQUÍ", w / 2, h * .765f, paint);
-        }
-
-        private void drawEnvelope(Canvas c, float w, float h) {
-            float cx = w / 2, top = h * (.40f - .10f * progress), ew = w * .76f, eh = h * .24f;
-            float left = cx - ew / 2, right = cx + ew / 2, bottom = top + eh;
-            paint.setShadowLayer(24, 0, 12, 0x88000000); paint.setColor(0xFFF2D489);
-            c.drawRoundRect(left, top, right, bottom, 18, 18, paint); paint.clearShadowLayer();
-            Path fold = new Path(); fold.moveTo(left, top); fold.lineTo(cx, top + eh * .62f); fold.lineTo(right, top); fold.close();
-            paint.setColor(0xFFDCA94C); c.drawPath(fold, paint);
-            Path front = new Path(); front.moveTo(left, bottom); front.lineTo(cx, top + eh * .42f); front.lineTo(right, bottom); front.close();
-            paint.setColor(0xFFFFE8AA); c.drawPath(front, paint);
-
-            if (progress > 0) {
-                float flapLift = eh * .92f * progress;
-                Path flap = new Path(); flap.moveTo(left, top); flap.lineTo(cx, top - flapLift); flap.lineTo(right, top); flap.close();
-                paint.setColor(0xFFEBC56E); c.drawPath(flap, paint);
-            }
-            if (progress < .55f) {
-                paint.setColor(0xFFC98A24); c.drawCircle(cx, top + eh * .42f, ew * .065f, paint);
-                paint.setColor(0xFFFFE59B); paint.setTextSize(ew * .07f); paint.setTextAlign(Paint.Align.CENTER);
-                c.drawText("T", cx, top + eh * .45f, paint);
-            }
-        }
-
-        private void drawMessage(Canvas c, float w, float h) {
-            float a = Math.min(1f, (progress - .55f) / .3f);
-            paint.setAlpha((int)(255 * a)); paint.setTextAlign(Paint.Align.CENTER);
-            paint.setTypeface(android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD));
-            paint.setColor(0xFFFFF8E7); paint.setTextSize(w * .076f); c.drawText("Para Tania", w / 2, h * .17f, paint);
-            paint.setTypeface(android.graphics.Typeface.create("serif", android.graphics.Typeface.ITALIC));
-            paint.setTextSize(w * .047f); paint.setColor(0xFFFFF3CE);
-            String[] lines = {"Tal vez no pueda dártelas", "en físico, pero te las obsequio", "de esta manera, a la distancia."};
-            for (int i = 0; i < lines.length; i++) c.drawText(lines[i], w / 2, h * (.26f + i * .055f), paint);
-            paint.setColor(0xFFE9BB43); paint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); paint.setTextSize(w * .038f);
-            c.drawText("Con cariño, Alan", w / 2, h * .89f, paint); paint.setAlpha(255);
-        }
-
-        private void drawFlowers(Canvas c, float w, float h) {
-            float bloom = Math.min(1f, progress * 1.35f);
-            for (Flower f : flowers) {
-                float y = h * (1.08f - bloom * f.travel);
-                float x = w * f.x + (float)Math.sin(progress * 7 + f.phase) * w * .025f;
-                float scale = f.size * Math.min(1f, progress * 2.2f);
-                drawFlower(c, x, y, scale, f.rotation + progress * 40f);
-            }
-        }
-
-        private void drawFlower(Canvas c, float x, float y, float r, float rotation) {
-            c.save(); c.rotate(rotation, x, y);
-            paint.setColor(0xFF73A85B); paint.setStrokeWidth(Math.max(2, r * .12f));
-            c.drawLine(x, y + r * .6f, x, y + r * 2.1f, paint);
-            paint.setColor(0xFFFFD84D);
-            for (int i = 0; i < 8; i++) {
-                double a = Math.PI * 2 * i / 8;
-                c.drawOval(new RectF((float)(x + Math.cos(a) * r * .62 - r * .34), (float)(y + Math.sin(a) * r * .62 - r * .52),
-                        (float)(x + Math.cos(a) * r * .62 + r * .34), (float)(y + Math.sin(a) * r * .62 + r * .52)), paint);
-            }
-            paint.setColor(0xFF9D6A16); c.drawCircle(x, y, r * .38f, paint); c.restore();
-        }
-
-        @Override public boolean onTouchEvent(MotionEvent e) {
-            if (e.getAction() == MotionEvent.ACTION_UP && !opened) {
-                opened = true; performClick();
-                ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
-                animator.setDuration(2600); animator.setInterpolator(new DecelerateInterpolator());
-                animator.addUpdateListener(a -> { progress = (float)a.getAnimatedValue(); invalidate(); });
-                animator.start(); return true;
-            }
-            return true;
-        }
-
-        @Override public boolean performClick() { super.performClick(); return true; }
-
-        private final class Flower {
-            final float x = .04f + random.nextFloat() * .92f;
-            final float travel = .35f + random.nextFloat() * .95f;
-            final float size = 10f + random.nextFloat() * 16f;
-            final float phase = random.nextFloat() * 6.28f;
-            final float rotation = random.nextFloat() * 360f;
-        }
+        @Override protected void onDraw(Canvas c){super.onDraw(c);long now=System.nanoTime();float dt=Math.min(.035f,(now-last)/1e9f);last=now;time+=dt;updatePetals(dt);float w=getWidth(),h=getHeight();p.setShader(new LinearGradient(0,0,0,h,0xFF071F1B,0xFF264D38,Shader.TileMode.CLAMP));c.drawRect(0,0,w,h,p);p.setShader(null);glow(c,w*.5f,h*.43f,w*.53f);stars(c,w,h);if(!opened||opening<.56f)envelope(c,w,h);if(opening>.18f)bouquet(c,w,h);drawPetals(c);if(!opened)welcome(c,w,h);else if(opening>.76f){dedication(c,w,h);controls(c,w,h);}if(opened||!petals.isEmpty())postInvalidateOnAnimation();}
+        private void glow(Canvas c,float x,float y,float r){p.setShader(new RadialGradient(x,y,r,0x38FFD866,0,Shader.TileMode.CLAMP));c.drawCircle(x,y,r,p);p.setShader(null);}
+        private void stars(Canvas c,float w,float h){p.setColor(0x55FFE9A0);for(int i=0;i<18;i++){float x=((i*97)%100)/100f*w,y=((i*53)%70)/100f*h,s=1.5f+(float)Math.sin(time*1.8+i)*1.1f;c.drawCircle(x,y,Math.max(.5f,s),p);}}
+        private void welcome(Canvas c,float w,float h){p.setTextAlign(Paint.Align.CENTER);p.setColor(0xFFFFF7DE);p.setTypeface(Typeface.create("serif",Typeface.BOLD));p.setTextSize(w*.09f);c.drawText("Para Tania",w/2,h*.22f,p);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));p.setTextSize(w*.041f);p.setColor(0xFFEFE1BB);c.drawText("Tengo un detalle para ti",w/2,h*.28f,p);p.setColor(0xFFFFCE45);c.drawRoundRect(w*.24f,h*.74f,w*.76f,h*.815f,50,50,p);p.setColor(0xFF24341F);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextSize(w*.042f);c.drawText("ABRIR SORPRESA",w/2,h*.788f,p);}
+        private void envelope(Canvas c,float w,float h){float cx=w/2,top=h*(.42f-.07f*opening),ew=w*.76f,eh=h*.235f,l=cx-ew/2,r=cx+ew/2,b=top+eh;p.setShadowLayer(24,0,12,0x99000000);p.setColor(0xFFF1D48A);c.drawRoundRect(l,top,r,b,18,18,p);p.clearShadowLayer();Path front=new Path();front.moveTo(l,b);front.lineTo(cx,top+eh*.4f);front.lineTo(r,b);front.close();p.setColor(0xFFFFEAB1);c.drawPath(front,p);Path flap=new Path();flap.moveTo(l,top);flap.lineTo(cx,top-eh*.9f*opening);flap.lineTo(r,top);flap.close();p.setColor(0xFFE6BC5E);c.drawPath(flap,p);if(opening<.35f){p.setColor(0xFFC98A24);c.drawCircle(cx,top+eh*.42f,ew*.064f,p);p.setColor(0xFFFFE9A6);p.setTextSize(ew*.07f);p.setTextAlign(Paint.Align.CENTER);c.drawText("T",cx,top+eh*.45f,p);}}
+        private void bouquet(Canvas c,float w,float h){float appear=Math.min(1,(opening-.18f)/.62f),cx=w/2,base=h*(.64f-.18f*appear),spread=w*.76f;for(Bloom f:bouquet){float sway=(float)Math.sin(time*1.7+f.phase)*w*.008f,x=cx+f.dx*spread+sway,y=base+f.dy*h*.34f;p.setColor(0xFF5E9448);p.setStrokeWidth(w*.012f);c.drawLine(cx+(x-cx)*.22f,h*.69f,x,y,p);leaf(c,(cx+x)/2,(h*.69f+y)/2,w*.032f,f.dx<0?-35:35);}wrap(c,w,h);for(Bloom f:bouquet){float sway=(float)Math.sin(time*1.7+f.phase)*w*.008f,x=cx+f.dx*spread+sway,y=base+f.dy*h*.34f,b=f.bounce>0?(float)Math.sin((1-f.bounce)*Math.PI)*w*.025f:0,pulse=1+(float)Math.sin(time*2.2+f.phase)*.035f+(f.bounce>0?.22f*(float)Math.sin(f.bounce*Math.PI):0);flower(c,x,y-b,w*.054f*f.scale*pulse,f.phase*31);if(f.bounce>0)f.bounce=Math.max(0,f.bounce-.045f);}}
+        private void leaf(Canvas c,float x,float y,float s,float a){c.save();c.rotate(a,x,y);p.setColor(0xFF79A85B);c.drawOval(new RectF(x-s*1.5f,y-s*.55f,x+s*1.5f,y+s*.55f),p);c.restore();}
+        private void wrap(Canvas c,float w,float h){Path q=new Path();q.moveTo(w*.27f,h*.55f);q.lineTo(w*.73f,h*.55f);q.lineTo(w*.57f,h*.73f);q.lineTo(w*.43f,h*.73f);q.close();p.setColor(0xE8F6E3BB);c.drawPath(q,p);p.setColor(0xFFD0A02F);p.setStrokeWidth(w*.014f);c.drawLine(w*.43f,h*.66f,w*.57f,h*.66f,p);c.drawCircle(w*.5f,h*.66f,w*.025f,p);}
+        private void flower(Canvas c,float x,float y,float r,float rot){c.save();c.rotate(rot+(float)Math.sin(time)*4,x,y);for(int i=0;i<10;i++){double a=Math.PI*2*i/10;float px=(float)(x+Math.cos(a)*r*.67),py=(float)(y+Math.sin(a)*r*.67);p.setColor(i%2==0?0xFFFFD83F:0xFFFFE66A);c.drawOval(new RectF(px-r*.32f,py-r*.52f,px+r*.32f,py+r*.52f),p);}p.setShader(new RadialGradient(x-r*.1f,y-r*.1f,r*.48f,0xFFFFC83A,0xFF8F5A12,Shader.TileMode.CLAMP));c.drawCircle(x,y,r*.47f,p);p.setShader(null);c.restore();}
+        private void dedication(Canvas c,float w,float h){p.setTextAlign(Paint.Align.CENTER);p.setColor(0xFFFFF8E8);p.setTypeface(Typeface.create("serif",Typeface.BOLD));p.setTextSize(w*.066f);c.drawText("Flores amarillas para ti",w/2,h*.105f,p);p.setTypeface(Typeface.create("serif",Typeface.ITALIC));p.setTextSize(w*.039f);p.setColor(0xFFFFF0C0);c.drawText("Tal vez no pueda dártelas en físico,",w/2,h*.153f,p);c.drawText("pero te las obsequio así, a la distancia.",w/2,h*.196f,p);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextSize(w*.032f);p.setColor(0xFFFFD85C);c.drawText(messages[msg],w/2,h*.77f,p);p.setTextSize(w*.027f);p.setColor(0xFFEEE1B8);c.drawText("Toca las flores para hacerlas bailar  •  Toques: "+touches,w/2,h*.805f,p);}
+        private void controls(Canvas c,float w,float h){float g=w*.025f,t=h*.835f,bh=h*.057f;bloomBtn.set(g,t,w*.32f,t+bh);rainBtn.set(w*.34f,t,w*.66f,t+bh);msgBtn.set(w*.68f,t,w-g,t+bh);resetBtn.set(w*.31f,t+bh+h*.014f,w*.69f,t+bh*2+h*.014f);button(c,bloomBtn,"✿ FLORECER",0xFFFFD64D);button(c,rainBtn,"❋ PÉTALOS",0xFFFFE58C);button(c,msgBtn,"♡ MENSAJE",0xFFFFD64D);button(c,resetBtn,"VOLVER A ABRIR",0xFFCDA23D);}
+        private void button(Canvas c,RectF r,String s,int color){p.setColor(color);p.setShadowLayer(6,0,3,0x66000000);c.drawRoundRect(r,30,30,p);p.clearShadowLayer();p.setColor(0xFF26341F);p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextSize(getWidth()*.025f);c.drawText(s,r.centerX(),r.centerY()+getWidth()*.009f,p);}
+        private void updatePetals(float dt){for(int i=petals.size()-1;i>=0;i--){Petal q=petals.get(i);q.life-=dt;q.y+=q.speed*dt;q.x+=(float)Math.sin(time*3+q.phase)*q.drift*dt;q.rotation+=90*dt;if(q.life<=0||q.y>getHeight()+40)petals.remove(i);}}
+        private void drawPetals(Canvas c){for(Petal q:petals){c.save();c.rotate(q.rotation,q.x,q.y);p.setColor(q.color);c.drawOval(new RectF(q.x-q.size*.45f,q.y-q.size,q.x+q.size*.45f,q.y+q.size),p);c.restore();}}
+        private void burst(float x,float y,int n){for(int i=0;i<n;i++)petals.add(new Petal(x+(rnd.nextFloat()-.5f)*getWidth()*.2f,y-rnd.nextFloat()*80,55+rnd.nextFloat()*150,10+rnd.nextFloat()*9,2.5f+rnd.nextFloat()*3));}
+        private void rain(){for(int i=0;i<45;i++)petals.add(new Petal(rnd.nextFloat()*getWidth(),-rnd.nextFloat()*getHeight()*.7f,80+rnd.nextFloat()*170,9+rnd.nextFloat()*11,4+rnd.nextFloat()*4));invalidate();}
+        private void open(){opened=true;ValueAnimator a=ValueAnimator.ofFloat(0,1);a.setDuration(2500);a.setInterpolator(new DecelerateInterpolator());a.addUpdateListener(v->{opening=(float)v.getAnimatedValue();if(opening>.42f&&petals.size()<8)burst(getWidth()/2,getHeight()*.43f,8);invalidate();});a.start();}
+        private boolean touchFlower(float x,float y){float w=getWidth(),h=getHeight(),cx=w/2,base=h*(.64f-.18f*Math.min(1,(opening-.18f)/.62f)),spread=w*.76f;for(Bloom f:bouquet){float fx=cx+f.dx*spread+(float)Math.sin(time*1.7+f.phase)*w*.008f,fy=base+f.dy*h*.34f;if(Math.hypot(x-fx,y-fy)<w*.09f){f.bounce=1;touches++;burst(fx,fy,7);return true;}}return false;}
+        @Override public boolean onTouchEvent(MotionEvent e){if(e.getAction()!=MotionEvent.ACTION_UP)return true;performClick();float x=e.getX(),y=e.getY();if(!opened){open();return true;}if(opening<.78f)return true;if(touchFlower(x,y)){invalidate();return true;}if(bloomBtn.contains(x,y)){for(Bloom f:bouquet)f.bounce=1;burst(getWidth()/2,getHeight()*.45f,18);}else if(rainBtn.contains(x,y))rain();else if(msgBtn.contains(x,y)){msg=(msg+1)%messages.length;burst(getWidth()/2,getHeight()*.76f,8);}else if(resetBtn.contains(x,y)){opened=false;opening=0;petals.clear();touches=0;msg=0;}invalidate();return true;}
+        @Override public boolean performClick(){super.performClick();return true;}
+        private final class Bloom{final float dx,dy,scale,phase;float bounce=0;Bloom(float x,float y,float s,float ph){dx=x;dy=y;scale=s;phase=ph;}}
+        private final class Petal{float x,y,speed,size,life,phase,rotation,drift;int color;Petal(float x,float y,float sp,float sz,float lf){this.x=x;this.y=y;speed=sp;size=sz;life=lf;phase=rnd.nextFloat()*6.28f;rotation=rnd.nextFloat()*360;drift=25+rnd.nextFloat()*65;color=rnd.nextBoolean()?0xFFFFD641:0xFFFFED88;}}
     }
 }
